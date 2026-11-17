@@ -1,0 +1,14 @@
+plugins {
+  id 'java'
+  id 'application'
+}
+java { toolchain { languageVersion = JavaLanguageVersion.of(25) } }
+repositories { mavenCentral() }
+dependencies {
+  implementation 'org.thymeleaf:thymeleaf:3.1.5.RELEASE'
+  implementation 'org.slf4j:slf4j-nop:2.0.17'
+  implementation 'org.commonmark:commonmark:0.24.0'
+  implementation 'org.jsoup:jsoup:1.18.3'
+}
+application { mainClass = 'demo.App' }
+tasks.named('run') { jvmArgs '-Dstdout.encoding=UTF-8' }

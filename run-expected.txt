@@ -1,0 +1,126 @@
+Java 25.0.4.1
+
+[사실 1] 댓글 = <script>document.body.dataset.xss=1</script>
+[사실 1]   글 그대로 이어 붙임 -> <p><script>document.body.dataset.xss=1</script></p>
+[사실 1]   th:text            -> <p>&lt;script&gt;document.body.dataset.xss=1&lt;/script&gt;</p>
+[사실 1]   th:utext           -> <p><script>document.body.dataset.xss=1</script></p>
+
+[사실 2] HTML 본문용 바꾸기(th:text 와 같은 바꾸기)를 했는데도 뚫리는 자리
+[사실 2]   (가) 링크 주소 th:href, 입력 = javascript:document.body.dataset.xss=1
+[사실 2]       -> <a id=go href="javascript:document.body.dataset.xss=1">내 홈페이지</a>   (클릭은 페이지가 대신 누름)
+[사실 2]   (나) 따옴표 없는 속성 <img src=입력>, 입력 = x onerror=document.body.dataset.xss=1
+[사실 2]       -> <img src=x onerror=document.body.dataset.xss=1>
+[사실 2]   (다) 스크립트 안 var id = 입력; , 입력 = 1;document.body.dataset.xss=1
+[사실 2]       -> <script>var id = 1;document.body.dataset.xss=1;</script>
+[사실 2]   (대조) 같은 자리에 스크립트용 바꾸기(th:inline=javascript)
+[사실 2]       -> <script>var id = "1;document.body.dataset.xss=1";</script>
+
+[사실 3] 들어올 때 <script> 낱말만 지우는 걸러 내기 (대소문자 무시, 한 번)
+[사실 3]   <script>document.body.dataset.xss=1</script>
+[사실 3]     걸러 낸 뒤 -> document.body.dataset.xss=1
+[사실 3]   <scr<script>ipt>document.body.dataset.xss=1</scr</script>ipt>
+[사실 3]     걸러 낸 뒤 -> <script>document.body.dataset.xss=1</script>
+[사실 3]   <img src=x onerror=document.body.dataset.xss=1>
+[사실 3]     걸러 낸 뒤 -> <img src=x onerror=document.body.dataset.xss=1>
+[사실 3]   <svg onload=document.body.dataset.xss=1>
+[사실 3]     걸러 낸 뒤 -> <svg onload=document.body.dataset.xss=1>
+
+[사실 4] 서버가 쿠키 두 개를 줌: sid=SECRET123 (HttpOnly), theme=dark (보통 쿠키)
+[사실 4] CSP script-src 'self' 를 단 페이지에 사실 1의 <script> 가 그대로 끼어듦 (+ 같은 서버의 /app.js)
+[사실 11] CSP script-src 'self' 가 무엇을 막고 무엇을 못 막나 (6편 두 번째 자물쇠)
+
+[사실 5] 저장형: 글쓴이가 서버에 글을 저장하고 떠남 -> 다른 두 방문자가 게시판을 엶 (브라우저 절)
+[사실 6] 반사형: 주소 ?q= 의 글을 서버가 화면에 그대로 되비침, 저장 없음 (브라우저 절)
+[사실 7] DOM 기반: 주소 # 뒤 조각을 페이지 스크립트가 innerHTML / textContent 로 넣음 (브라우저 절)
+
+[사실 8] 꾸밈 허용: 마크다운 글 = **굵게** [블로그](https://example.com) <img src=x onerror="document.body.dataset.xss=1"> [누르기](javascript:document.body.dataset.xss=1)
+[사실 8]   마크다운 -> HTML (commonmark 기본값) = <p><strong>굵게</strong> <a href="https://example.com">블로그</a> <img src=x onerror="document.body.dataset.xss=1"> <a href="javascript:document.body.dataset.xss=1">누르기</a></p>
+[사실 8]   지울 것을 고르는 걸러 내기(사실 3) 뒤 = <p><strong>굵게</strong> <a href="https://example.com">블로그</a> <img src=x onerror="document.body.dataset.xss=1"> <a href="javascript:document.body.dataset.xss=1">누르기</a></p>
+[사실 8]   허용 목록(jsoup Safelist.basicWithImages) 뒤 = <p><strong>굵게</strong> <a href="https://example.com" rel="nofollow">블로그</a> <img> <a rel="nofollow">누르기</a></p>
+
+[브라우저] C:\Program Files\Google\Chrome\Application\chrome.exe --headless 로 열어 다 그려진 DOM 을 봄
+[사실 1] 브라우저: 글 그대로                                -> 끼어든 명령 실행됨
+[사실 1] 브라우저: th:text                              -> 실행 안 됨
+[사실 1] 브라우저: th:utext                             -> 끼어든 명령 실행됨
+[사실 2] 브라우저: (가) th:href 에 javascript: 주소         -> 끼어든 명령 실행됨
+[사실 2] 브라우저: (나) 따옴표 없는 속성 + HTML 바꾸기             -> 끼어든 명령 실행됨
+[사실 2] 브라우저: (다) 스크립트 안 + HTML 바꾸기                -> 끼어든 명령 실행됨
+[사실 2] 브라우저: (대조) 스크립트 안 + th:inline=javascript   -> 실행 안 됨
+[사실 3] 브라우저: <script> 그대로                         -> 실행 안 됨
+[사실 3] 브라우저: <scr<script>ipt>                     -> 끼어든 명령 실행됨
+[사실 3] 브라우저: <img onerror>                        -> 끼어든 명령 실행됨
+[사실 3] 브라우저: <svg onload>                         -> 끼어든 명령 실행됨
+[사실 4] 브라우저: 페이지 스크립트의 document.cookie = "theme=dark"  (HttpOnly 쿠키 sid 는 안 보임)
+[사실 4] 브라우저: CSP 없음 -> 끼어든 인라인 스크립트 실행됨, 같은 서버의 /app.js 실행됨
+[사실 4] 브라우저: CSP 있음 -> 끼어든 인라인 스크립트 실행 안 됨, 같은 서버의 /app.js 실행됨
+[사실 11] 브라우저: (가) CSP 'self' + 끼어든 <img onerror>           -> 실행 안 됨
+[사실 11] 브라우저: (나) CSP 'self' + 같은 사이트에 올린 파일 <script src>  -> 끼어든 명령 실행됨
+[사실 11] 브라우저: (다) CSP 'self' 'unsafe-inline' + 끼어든 <script> -> 끼어든 명령 실행됨
+[사실 5] 글쓴이: POST /5-write 로 댓글 <img src=x onerror=document.body.dataset.xss=1> 를 남기고 떠남 (브라우저 아님, 다시 안 옴)
+[사실 5] 서버 저장소 = [<img src=x onerror=document.body.dataset.xss=1>]   (저장할 때 걸러 내지 않음, 원문 그대로)
+[사실 5] 브라우저: 방문자 A(새 프로필) /5-board (보여 줄 때 안 바꿈)  -> 끼어든 명령 실행됨
+[사실 5] 브라우저: 방문자 B(다른 프로필) /5-board (보여 줄 때 안 바꿈) -> 끼어든 명령 실행됨
+[사실 5] 서버가 받은 /5-board 요청 수 = 2 (두 방문 각각 저장 글을 받아 감)
+[사실 5] 브라우저: 방문자 A /5-board-safe (보여 줄 때 th:text) -> 실행 안 됨
+[사실 5]   보인 글 -> &lt;img src=x onerror=document.body.dataset.xss=1&gt;   (저장소는 그대로 [<img src=x onerror=document.body.dataset.xss=1>])
+[사실 6] 링크 = /6-search?q=%3Cimg%20src%3Dx%20onerror%3Ddocument.body.dataset.xss%3D1%3E
+[사실 6] 브라우저: 링크를 연 사람 /6-search (그대로 되비침)         -> 끼어든 명령 실행됨
+[사실 6] 브라우저: 같은 글 /6-search-safe (되비칠 때 th:text)  -> 실행 안 됨
+[사실 6] 서버 저장소 글 수: 링크 열기 전 1 -> 후 1 (아무것도 저장 안 됨)
+[사실 6] 서버가 받은 요청 줄:
+[사실 6]   GET /6-search?q=%3Cimg%20src%3Dx%20onerror%3Ddocument.body.dataset.xss%3D1%3E HTTP/1.1
+[사실 6]   GET /6-search-safe?q=%3Cimg%20src%3Dx%20onerror%3Ddocument.body.dataset.xss%3D1%3E HTTP/1.1
+[사실 7] 주소 = /7-inner#<img src=x onerror=document.body.dataset.xss=1>  (실제로는 # 뒤를 %-인코딩해 엶)
+[사실 7] 브라우저: innerHTML 에 <img onerror>            -> 끼어든 명령 실행됨
+[사실 7] 브라우저: innerHTML 에 <script>                 -> 실행 안 됨
+[사실 7]   (그때 DOM 의 #out = <script>document.body.dataset.xss=1</script>  -> 요소는 들어갔지만 실행 안 됨)
+[사실 7] 브라우저: textContent 에 <img onerror>          -> 실행 안 됨
+[사실 7]   (그때 DOM 의 #out = &lt;img src=x onerror=document.body.dataset.xss=1&gt;  -> 글자로만 보임)
+[사실 7] 서버가 받은 요청 줄:
+[사실 7]   GET /7-inner HTTP/1.1
+[사실 7]   GET /7-inner HTTP/1.1
+[사실 7]   GET /7-text HTTP/1.1
+[사실 8] 브라우저: 마크다운 <img onerror> -> th:utext       -> 끼어든 명령 실행됨
+[사실 8] 브라우저: 마크다운 <img onerror> -> 걸러 내기 -> utext -> 끼어든 명령 실행됨
+[사실 8] 브라우저: 마크다운 <img onerror> -> Safelist -> utext -> 실행 안 됨
+[사실 8] 브라우저: 마크다운 javascript: 링크 클릭 -> utext      -> 끼어든 명령 실행됨
+[사실 8] 브라우저: 마크다운 javascript: 링크 클릭 -> Safelist   -> 실행 안 됨
+
+---------------- 보강 ----------------
+[사실 4 보강] 로그인 응답(sid=SECRET123 HttpOnly)을 받은 페이지에 끼어든 스크립트가 fetch('/4b-me', POST)
+[사실 4 보강] 브라우저: 끼어든 스크립트                             -> 끼어든 명령 실행됨
+[사실 4 보강]   스크립트가 본 document.cookie = "theme=dark"  (sid 는 못 읽음)
+[사실 4 보강]   서버가 받은 Cookie 헤더 = "sid=SECRET123; theme=dark"
+[사실 4 보강]   서버 응답(스크립트가 받음) = "alice(로그인)"
+[사실 4 보강]   (대조) 로그인 안 한 새 프로필에서 같은 fetch -> 서버 응답 = "손님(로그인 안 됨)"
+[사실 7 보강] 입력 = <img src=x onerror=document.body.dataset.xss=1>
+[사실 7 보강] 브라우저: ?q= 를 페이지 스크립트가 innerHTML            -> 끼어든 명령 실행됨
+[사실 7 보강]   서버 응답(th:text 로 바꿈)의 #src = &lt;img src=x onerror=document.body.dataset.xss=1&gt;
+[사실 7 보강] 브라우저: 그 글자를 꺼내 innerHTML                   -> 끼어든 명령 실행됨
+[사실 7 보강] 브라우저: (대조) 그 글자를 꺼내 textContent            -> 실행 안 됨
+[사실 8 보강] 허용 목록 jsoup Safelist.basic (<a href> 허락, 주소 형식은 http·https·ftp·mailto)
+[사실 8 보강]   https 링크 -> <a href="https://example.com" rel="nofollow">블로그</a>
+[사실 8 보강]   <a href="javascript:document.body.dataset.xss=1">누르기</a> -> <a rel="nofollow">누르기</a>
+[사실 8 보강] 브라우저:   그대로 + 클릭                           -> 끼어든 명령 실행됨
+[사실 8 보강] 브라우저:   Safelist.basic 뒤 + 클릭              -> 실행 안 됨
+[사실 8 보강]   <a href="JaVaScRiPt:document.body.dataset.xss=1">누르기</a> -> <a rel="nofollow">누르기</a>
+[사실 8 보강] 브라우저:   그대로 + 클릭                           -> 끼어든 명령 실행됨
+[사실 8 보강] 브라우저:   Safelist.basic 뒤 + 클릭              -> 실행 안 됨
+[사실 8 보강]   <a href="java&#x09;script:document.body.dataset.xss=1">누르기</a> -> <a rel="nofollow">누르기</a>
+[사실 8 보강] 브라우저:   그대로 + 클릭                           -> 끼어든 명령 실행됨
+[사실 8 보강] 브라우저:   Safelist.basic 뒤 + 클릭              -> 실행 안 됨
+[사실 9] (가) 같은 페이지 안에서 비밀번호를 다시 받는 큰일 확인 (사용자 입력은 페이지 스크립트가 대신 입력)
+[사실 9] 브라우저: (가) 끼어든 스크립트                         -> 끼어든 명령 실행됨
+[사실 9]   가짜 확인 창 = 페이지에 들어감 ("보안 확인: 비밀번호를 다시 입력하세요")
+[사실 9]   끼어든 스크립트가 읽은 비밀번호 칸 값(input.value) = "pw1234"
+[사실 9]   그 값으로 보낸 큰일 요청의 서버 응답 = "처리됨", 서버 처리 기록 0 -> 1
+[사실 9] (나) 다른 기기 승인 방식 (시뮬레이션: 서버가 승인 토큰을 다른 기기로만 보내고 응답에는 안 넣음)
+[사실 9] 브라우저: (나) 끼어든 스크립트                         -> 끼어든 명령 실행됨
+[사실 9]   끼어든 스크립트의 큰일 요청 -> 202 승인 대기 id=1
+[사실 9]   스크립트가 토큰 없이 승인 시도 -> 403, 지어낸 토큰으로 -> 403
+[사실 9]   그 뒤 서버 처리 기록 1 -> 1 (처리 안 됨, 승인 대기)
+[사실 9]   사용자가 다른 기기에서 승인(진짜 토큰) -> 200, 서버 처리 기록 -> 2
+[사실 9]   서버: 승인 시도 id=1 토큰=(없음) -> 403 거절
+[사실 9]   서버: 승인 시도 id=1 토큰=guess -> 403 거절
+[사실 9]   서버: 승인 시도 id=1 토큰=(다른 기기의 진짜 토큰) -> 200 처리됨
+[사실 10] CSP script-src 'self' 여도 같은 사이트의 스크립트는 실행 -> 사실 4의 "CSP 있음 ... 같은 서버의 /app.js 실행됨" 줄이 근거
